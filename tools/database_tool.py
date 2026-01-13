@@ -393,11 +393,23 @@ class ClientQueryTool(BaseTool):
                 result_lines = [f"נמצאו {len(clients)} לקוחות:\n"]
                 for client in clients:
                     looking_type = "להשכרה" if client.looking_for == "rent" else "לקנייה"
-                    result_lines.append(
-                        f"לקוח #{client.id}: {client.name} - מחפש {looking_type}, "
-                        f"{client.min_rooms}-{client.max_rooms} חדרים, "
-                        f"תקציב: {client.min_price:,}-{client.max_price:,}₪"
-                    )
+
+                    # Build client info line with None handling
+                    client_line = f"לקוח #{client.id}: {client.name} - מחפש {looking_type}"
+
+                    # Add rooms info if available
+                    if client.min_rooms is not None or client.max_rooms is not None:
+                        min_r = client.min_rooms if client.min_rooms is not None else "?"
+                        max_r = client.max_rooms if client.max_rooms is not None else "?"
+                        client_line += f", {min_r}-{max_r} חדרים"
+
+                    # Add budget info if available
+                    if client.min_price is not None or client.max_price is not None:
+                        min_p = f"{client.min_price:,}" if client.min_price is not None else "?"
+                        max_p = f"{client.max_price:,}" if client.max_price is not None else "?"
+                        client_line += f", תקציב: {min_p}-{max_p}₪"
+
+                    result_lines.append(client_line)
                     if client.city:
                         result_lines.append(f"  עיר מועדפת: {client.city}")
 

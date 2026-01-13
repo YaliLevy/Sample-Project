@@ -1,57 +1,74 @@
-# 🏠 בוט WhatsApp לניהול נדל"ן - CrewAI + Twilio
+# WhatsApp Real Estate Bot - CrewAI + Twilio
 
-בוט חכם בעברית לניהול נכסים ולקוחות דרך WhatsApp, משתמש ב-CrewAI לתיאום מספר AI agents שעובדים ביחד.
+A smart Hebrew-speaking WhatsApp bot for managing real estate properties and clients, powered by CrewAI multi-agent orchestration.
 
-## ✨ תכונות
+## Features
 
-- **הוספת נכסים** - שלח פרטי נכס בעברית טבעית והבוט יפרק ויישמור במאגר
-- **העלאת תמונות** - שלח תמונות ישירות מ-WhatsApp, הבוט יוריד ויקשר לנכס
-- **ניהול לקוחות** - רשום לקוחות עם דרישות חיפוש
-- **התאמה אוטומטית** - אלגוריתם חכם למציאת התאמות מושלמות בין נכסים ללקוחות
-- **חיפוש** - חפש נכסים ולקוחות בעברית
-- **שפה טבעית** - הבוט מבין עברית דיבורית, קיצורים (חד׳, מ״ר, ת״א) וסלנג
+- **Property Management** - Add properties via natural Hebrew text, automatically parsed and stored
+- **Photo Upload** - Send photos directly from WhatsApp, automatically downloaded and linked to properties
+- **Client Management** - Register clients with their search requirements
+- **Smart Matching** - Algorithm that finds perfect matches between properties and clients
+- **Hebrew Search** - Search properties and clients in natural Hebrew
+- **Natural Language** - Understands Hebrew slang, abbreviations, and colloquial speech
 
-## 🏗️ ארכיטקטורה
+## Architecture
 
 ```
 WhatsApp → Twilio → Flask Webhook → CrewAI Orchestrator
-                                            ↓
-                            ┌───────────────┼───────────────┐
-                            ↓               ↓               ↓
-                    Property Crew    Client Crew    Manager Agent
-                    (4 agents)       (4 agents)     (classifier)
-                            ↓               ↓
-                    Tools: Database, Media, Matching, WhatsApp
-                            ↓
-                    SQLite Database (Properties, Clients, Matches, Photos)
+                         ↓ (async processing)
+                   Background Thread
+                         ↓
+         ┌───────────────┼───────────────┐
+         ↓               ↓               ↓
+ Property Crew    Client Crew    Manager Agent
+ (5 agents)       (4 agents)     (classifier)
+         ↓               ↓
+ Tools: Database, Media, Matching, WhatsApp
+         ↓
+ SQLite Database (Properties, Clients, Matches, Photos)
+         ↓
+ Response via Twilio API
 ```
 
-### Agents:
-- **Manager Agent** - מזהה כוונות (add property, add client, search, match)
-- **Parser Agents** - מפרקים טקסט עברית לנתונים מובנים
-- **DB Agents** - מבצעים פעולות CRUD במאגר
-- **Photo Agent** - מוריד ומנהל תמונות מ-WhatsApp
-- **Matcher Agent** - מחשב ציוני התאמה בין נכסים ללקוחות
-- **Response Agents** - כותבים תשובות ידידותיות בעברית
+### Key Components
 
-## 📋 דרישות
+#### Agents
+- **Manager Agent** - Classifies intent (add property, add client, search, match)
+- **Parser Agents** - Parse Hebrew text into structured data (JSON)
+- **DB Agents** - Handle CRUD operations with database tools
+- **Photo Agent** - Downloads and manages photos from WhatsApp/Twilio
+- **Matcher Agent** - Calculates match scores between properties and clients
+- **Response Agents** - Generate friendly Hebrew responses
+
+#### Tools
+- `PropertySaveTool` - Save new properties
+- `PropertyGetByIdTool` - Fetch specific property with full details
+- `PropertyQueryTool` - Search properties with filters
+- `PropertyUpdateTool` - Update property status/details
+- `ClientSaveTool` - Save new clients
+- `ClientQueryTool` - Search clients
+- `MediaDownloadTool` - Download photos from Twilio
+- `PropertyMatcherTool` - Find properties matching client criteria
+- `ClientMatcherTool` - Find clients matching property
+
+## Requirements
 
 - Python 3.11+
-- חשבון Twilio עם WhatsApp Sandbox
-- OpenAI API key (ל-GPT-4o)
-- ngrok (לפיתוח מקומי)
+- Twilio account with WhatsApp Sandbox
+- OpenAI API key (for GPT-4o)
+- ngrok (for local development)
 
-## 🚀 התקנה
+## Installation
 
-### 1. התקן תלויות
+### 1. Install dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. הגדר משתני סביבה
+### 2. Configure environment variables
 
-צור קובץ `.env` (העתק מ `.env.example`):
+Create a `.env` file (copy from `.env.example`):
 
 ```bash
 # Twilio
@@ -70,53 +87,53 @@ FLASK_ENV=development
 FLASK_SECRET_KEY=your_random_secret_key
 FLASK_DEBUG=True
 
-# ngrok (אופציונלי)
+# ngrok (optional)
 NGROK_AUTH_TOKEN=your_ngrok_token
 
 # Logging
 LOG_LEVEL=INFO
 ```
 
-### 3. אתחל את מאגר הנתונים
+### 3. Initialize the database
 
 ```bash
 python database/init_db.py
 ```
 
-זה ייצור:
-- את כל הטבלאות הנדרשות
-- נתוני בדיקה בעברית (3 נכסים, 3 לקוחות, 3 התאמות)
+This creates:
+- All required tables
+- Sample test data in Hebrew (3 properties, 3 clients, 3 matches)
 
-### 4. הפעל את השרת
+### 4. Start the server
 
 ```bash
 python main.py
 ```
 
-השרת יתחיל ב-development mode עם ngrok אוטומטי.
+The server will start in development mode with automatic ngrok tunnel.
 
-## 🔧 הגדרת Twilio WhatsApp Sandbox
+## Twilio WhatsApp Sandbox Setup
 
-1. **היכנס ל-Twilio Console**:
+1. **Go to Twilio Console**:
    https://console.twilio.com/us1/develop/sms/settings/whatsapp-sandbox
 
-2. **הגדר Webhook**:
-   - בשדה "When a message comes in":
-   - הדבק את ה-webhook URL ש-ngrok הדפיס (משהו כמו: `https://abc123.ngrok.io/webhook`)
-   - לחץ "Save"
+2. **Configure Webhook**:
+   - In "When a message comes in" field
+   - Paste the ngrok webhook URL (e.g., `https://abc123.ngrok.io/webhook`)
+   - Click "Save"
 
-3. **התחבר ל-Sandbox**:
-   - שלח הודעה WhatsApp למספר Sandbox של Twilio
-   - שלח את קוד ה-join שמופיע בקונסול
-   - תקבל אישור: "You are all set!"
+3. **Connect to Sandbox**:
+   - Send a WhatsApp message to the Twilio Sandbox number
+   - Send the join code shown in the console
+   - You'll receive: "You are all set!"
 
-4. **בדוק**:
-   - שלח: "שלום"
-   - אמור לקבל תשובה מהבוט!
+4. **Test**:
+   - Send: "שלום" (Hello)
+   - You should receive a response from the bot!
 
-## 📱 דוגמאות שימוש
+## Usage Examples
 
-### הוספת נכס
+### Adding a Property
 
 ```
 דירה 3 חדרים בתל אביב רחוב דיזנגוף 102 קומה 2
@@ -125,9 +142,9 @@ python main.py
 בעלים: יוסי כהן 053-4439430
 ```
 
-אפשר גם לשלוח עם תמונות! פשוט תצרף 1-5 תמונות להודעה.
+You can also attach photos! Just send 1-5 images with the message.
 
-**תשובה:**
+**Response:**
 ```
 מעולה! 🏠 שמרתי את הנכס:
 
@@ -139,10 +156,9 @@ python main.py
 מספר נכס: #42
 
 מצאתי לקוח שמתאים! יניב מחפש 2-3 חדרים עד 6000₪.
-רוצה שאשלח את הפרטים?
 ```
 
-### הוספת לקוח
+### Adding a Client
 
 ```
 לקוח חדש דני לוי 050-2223344
@@ -150,252 +166,229 @@ python main.py
 בצפון תל אביב
 ```
 
-**תשובה:**
-```
-רשמתי את דני לוי! 📝
-
-🔍 מחפש: 3 חדרים | עד 7,000₪ | צפון ת״א | שכירות
-
-מספר לקוח: #5
-
-מצאתי 2 נכסים מתאימים:
-
-🏠 ארלוזורוב 55 - 3 חד׳ | 6,800₪ (התאמה 95%)
-   ✓ עיר מדויקת | ✓ בתקציב | ✓ מספר חדרים מתאים
-
-🏠 דיזנגוף 200 - 3 חד׳ | 7,200₪ (התאמה 80%)
-   ✓ עיר מדויקת | ⚠ מעל תקציב ב-3%
-
-רוצה לתאם סיור?
-```
-
-### חיפוש נכסים
+### Querying Properties
 
 ```
 תראה לי נכסים בדיזנגוף
 ```
 
-או
+or
 
 ```
-חפש 3 חדרים עד 6000 בתל אביב
+תראה לי נכס מספר 5
 ```
 
-### מציאת התאמות
+### Finding Matches
 
 ```
 מה מתאים לדני לוי?
 ```
 
-או
+or
 
 ```
 תמצא לקוחות לנכס בדיזנגוף 102
 ```
 
-### עזרה
+## Matching Algorithm
 
-```
-עזרה
-```
+The bot calculates a match score (0-100) based on:
 
-או
+| Criterion | Weight | Details |
+|-----------|--------|---------|
+| **Transaction Type** | 30 points | Must match (rent ↔ rent, sale ↔ buy) |
+| **Location** | 25 points | Exact city (25) or same area (15) |
+| **Rooms** | 20 points | In range (20) or close (minus 5 per room difference) |
+| **Price** | 15 points | Within budget (15), up to 10% over (10), more (minus) |
+| **Size** | 10 points | Above minimum (10) or proportional |
 
-```
-שלום
-```
+**Good match threshold:** 65+ points
 
-## 🎯 אלגוריתם ההתאמה
-
-הבוט מחשב ציון התאמה (0-100) לפי:
-
-| קריטריון | משקל | פירוט |
-|----------|------|-------|
-| **סוג עסקה** | 30 נקודות | חייב להתאים (rent ↔ rent, sale ↔ buy) |
-| **מיקום** | 25 נקודות | עיר מדויקת (25) או אותו אזור (15) |
-| **חדרים** | 20 נקודות | בטווח (20) או קרוב (מינוס 5 לכל חדר הפרש) |
-| **מחיר** | 15 נקודות | בתקציב (15), עד 10% מעל (10), יותר (מינוס) |
-| **גודל** | 10 נקודות | מעל מינימום (10) או מתחת (יחסי) |
-
-**סף התאמה טובה:** 65+ נקודות
-
-**דוגמה:**
-- לקוח: 3 חדרים, עד 7000₪, תל אביב
-- נכס: 3 חדרים, 6800₪, תל אביב
-- ציון: **95** (התאמה מצוינת! ✨)
-
-## 📂 מבנה הפרויקט
+## Project Structure
 
 ```
 real_estate_bot/
-├── config/                 # הגדרות וקונפיגורציה
-│   ├── settings.py         # משתני סביבה
+├── config/                 # Configuration
+│   ├── settings.py         # Environment variables
 │   └── llm_config.py       # GPT-4o configuration
 │
-├── database/               # מאגר נתונים
+├── database/               # Database layer
 │   ├── models.py           # SQLAlchemy models
 │   ├── connection.py       # Database connection
-│   └── init_db.py          # אתחול ומילוי נתונים
+│   └── init_db.py          # Initialize & seed data
 │
-├── tools/                  # כלים לשימוש ה-agents
-│   ├── database_tool.py    # פעולות CRUD
-│   ├── media_tool.py       # הורדת תמונות מ-Twilio
-│   ├── whatsapp_tool.py    # שליחת הודעות
-│   ├── matching_tool.py    # אלגוריתם התאמה
-│   └── search_tool.py      # חיפוש בעברית
+├── tools/                  # Agent tools
+│   ├── database_tool.py    # CRUD operations
+│   ├── media_tool.py       # Photo download from Twilio
+│   ├── whatsapp_tool.py    # Send messages
+│   ├── matching_tool.py    # Matching algorithm
+│   ├── schemas.py          # Pydantic input schemas
+│   └── search_tool.py      # Hebrew search
 │
 ├── agents/                 # AI agents
 │   ├── manager/            # Manager agent (routing)
-│   ├── property/           # 4 property agents
-│   └── client/             # 4 client agents
+│   ├── property/           # Property agents (parser, db, photo, response)
+│   └── client/             # Client agents (parser, db, matcher, response)
 │
-├── crews/                  # תהליכי עבודה
-│   ├── property_crew.py    # Property workflow
-│   ├── client_crew.py      # Client workflow
-│   └── orchestrator.py     # Main router
+├── crews/                  # Workflow orchestration
+│   ├── property_crew.py    # Property workflow (5 tasks)
+│   ├── client_crew.py      # Client workflow (4 tasks)
+│   └── orchestrator.py     # Main router & intent classifier
 │
 ├── bot/                    # Flask webhook
-│   ├── twilio_handler.py   # Webhook endpoint
-│   └── conversation_state.py # ניהול היסטוריה
+│   ├── twilio_handler.py   # Async webhook endpoint
+│   └── conversation_state.py # Conversation history
 │
-├── storage/                # אחסון
-│   ├── photos/             # תמונות נכסים
+├── storage/                # Storage
+│   ├── photos/             # Property photos
 │   └── database.db         # SQLite database
 │
-├── main.py                 # נקודת כניסה ראשית
-├── ngrok_setup.py          # עזר ל-ngrok
-└── requirements.txt        # תלויות Python
+├── main.py                 # Entry point
+├── ngrok_setup.py          # ngrok helper
+└── requirements.txt        # Python dependencies
 ```
 
-## 🔍 Troubleshooting
+## Technical Details
 
-### הבוט לא מגיב להודעות
+### Async Processing
 
-1. בדוק ש-ngrok פועל: http://localhost:4040
-2. בדוק ש-webhook מוגדר נכון ב-Twilio Console
-3. בדוק logs ב-terminal שבו רץ `python main.py`
+The bot uses background threading to handle Twilio's 15-second webhook timeout:
 
-### שגיאת Authentication מ-Twilio
+1. Webhook receives message → returns `200 OK` immediately
+2. Background thread processes message with CrewAI agents
+3. Response sent via Twilio REST API (not webhook response)
 
-וודא ש:
-- `TWILIO_ACCOUNT_SID` ו-`TWILIO_AUTH_TOKEN` נכונים ב-.env
-- שלחת את קוד ה-join ל-Sandbox
+This allows unlimited processing time without Twilio timeout errors.
 
-### שגיאת OpenAI API
+### Hebrew Text Parsing
 
-- בדוק ש-`OPENAI_API_KEY` תקף
-- בדוק שיש לך קרדיט ב-OpenAI account
+The parser agent understands:
+- **Abbreviations**: חד׳ (rooms), מ״ר (sqm), ת״א (Tel Aviv)
+- **Numbers**: "2 מיליון" → 2000000, "5000 שקל" → 5000
+- **Slang**: משופצת (renovated), ממוזגת (air-conditioned)
+- **Transaction types**: "להשכרה" → rent, "למכירה" → sale
 
-### תמונות לא מורדות
+### Owner Information Extraction
 
-- בדוק שיש הרשאות כתיבה ל-`storage/photos/`
-- בדוק את ה-logs - אולי יש שגיאת Authentication מ-Twilio
-
-### הבוט "תקוע" או לא מסיים
-
-- CrewAI לפעמים לוקח זמן (10-30 שניות)
-- בדוק logs לזיהוי בעיות
-- נסה הודעה פשוטה יותר
-
-## 🧪 בדיקות
-
-### הרץ את אתחול ה-DB עם נתונים לדוגמה:
-
-```bash
-python database/init_db.py
+When a message contains owner details:
 ```
-
-### בדוק נתונים במאגר:
-
-```python
-from database.connection import get_session
-from database.models import Property, Client
-
-with get_session() as session:
-    properties = session.query(Property).all()
-    print(f"Properties: {len(properties)}")
-
-    clients = session.query(Client).all()
-    print(f"Clients: {len(clients)}")
+בעלים משה כהן 0541234567
 ```
+The parser extracts:
+- `owner_name`: "משה כהן"
+- `owner_phone`: "0541234567"
 
-### בדוק כלי בודד:
+### Property Details
 
-```python
-from tools.matching_tool import PropertyMatcherTool
+When querying a specific property by ID, the bot returns full details:
+- Property type, address, city
+- Rooms, size, floor
+- Price and transaction type
+- Owner name and phone
+- Description
+- Photo count
+- Creation date
 
-matcher = PropertyMatcherTool()
-result = matcher._run(client_id=1, limit=5)
-print(result)
-```
+## Troubleshooting
 
-## 🚀 Production Deployment
+### Bot not responding to messages
 
-להרצה ב-production (ללא ngrok):
+1. Check ngrok is running: http://localhost:4040
+2. Verify webhook is set correctly in Twilio Console
+3. Check logs in terminal running `python main.py`
 
-1. **Deploy לשרת** (Heroku, AWS, GCP, וכו')
+### Twilio Authentication Error
 
-2. **הגדר משתני סביבה**:
+- Verify `TWILIO_ACCOUNT_SID` and `TWILIO_AUTH_TOKEN` in `.env`
+- Make sure you sent the join code to the Sandbox
+
+### OpenAI Rate Limit (429 Error)
+
+- Wait a few seconds between messages
+- Consider upgrading your OpenAI plan for higher TPM limits
+- The system auto-retries, but may fail on sustained load
+
+### Photos not downloading
+
+- Check write permissions for `storage/photos/`
+- Check logs for Twilio authentication errors
+
+### Processing takes too long
+
+- CrewAI workflows can take 10-30 seconds
+- This is handled by async processing
+- Check logs to identify bottlenecks
+
+## Performance
+
+**Estimated response times:**
+- Intent classification: 2-3 seconds
+- Add property (no photos): 10-15 seconds
+- Add property (with photos): 16-20 seconds
+- Add client + find matches: 15-20 seconds
+- Search query: 5-8 seconds
+
+**API Usage:**
+- Each workflow uses 4-6 OpenAI API calls
+- Estimated cost: ~$0.02-0.05 per message (varies by length)
+
+## Production Deployment
+
+For production (without ngrok):
+
+1. **Deploy to server** (Heroku, AWS, GCP, etc.)
+
+2. **Set environment variables**:
 ```bash
 FLASK_ENV=production
 FLASK_DEBUG=False
 ```
 
-3. **הגדר webhook קבוע ב-Twilio**:
-   - במקום ngrok URL, השתמש ב-production URL שלך
-   - דוגמה: `https://your-domain.com/webhook`
+3. **Configure permanent webhook in Twilio**:
+   - Use your production URL instead of ngrok
+   - Example: `https://your-domain.com/webhook`
 
-4. **השתמש ב-production WSGI server**:
+4. **Use production WSGI server**:
 ```bash
 pip install gunicorn
 gunicorn -w 4 -b 0.0.0.0:5000 bot.twilio_handler:app
 ```
 
-5. **שקול PostgreSQL** במקום SQLite לביצועים טובים יותר
+5. **Consider PostgreSQL** instead of SQLite for better performance
 
-## 📊 סטטיסטיקות ביצועים
+## Future Improvements
 
-**זמני תגובה משוערים:**
-- סיווג כוונה (Manager): 2-3 שניות
-- הוספת נכס (ללא תמונות): 10-15 שניות
-- הוספת נכס (עם 3 תמונות): 16-20 שניות
-- הוספת לקוח + התאמות: 15-20 שניות
-- חיפוש: 5-8 שניות
+- [ ] **Optimize agent architecture** - Reduce API calls (currently 4-6 per message)
+- [ ] **Intent classification without LLM** - Use regex/keywords for common patterns
+- [ ] **Caching** - Cache common responses
+- [ ] **Cheaper models** - Use GPT-3.5 or Claude Haiku for simple tasks
+- [ ] **Calendar Crew** - Schedule viewings with Google Calendar
+- [ ] **Background tasks** - Celery for async processing
+- [ ] **Admin Dashboard** - Web management interface
+- [ ] **Analytics** - Track matches and conversions
+- [ ] **Multi-language** - English and Arabic support
+- [ ] **Voice messages** - Transcribe voice messages
 
-**שימוש ב-OpenAI:**
-- כל workflow משתמש ב-4-6 קריאות API
-- עלות משוערת: ~$0.02-0.05 לכל הודעה (תלוי באורך)
+## License
 
-## 🔮 תכונות עתידיות (לא ב-MVP)
+MIT License - Free to use
 
-- [ ] Calendar Crew - תיאום פגישות עם Google Calendar
-- [ ] Background tasks - Celery לעיבוד אסינכרוני
-- [ ] Admin Dashboard - ממשק ניהול Web
-- [ ] Analytics - מעקב אחרי התאמות והמרות
-- [ ] Multi-language - אנגלית וערבית
-- [ ] Voice messages - תמלול הודעות קוליות
-- [ ] Map integration - חיפוש מבוסס מיקום
+## Contributing
 
-## 📝 רישיון
+Pull requests are welcome!
 
-MIT License - חופשי לשימוש
+## Tips
 
-## 🤝 תרומה
+1. **Supported abbreviations**: חד׳, מ״ר, ת״א, ירוש׳, ק״ג, ש״ח, מיל׳
+2. **Flexible formats**: Bot understands "2 מיליון", "2,000,000", "2000000"
+3. **Areas**: Bot recognizes areas (גוש דן, צפון ת״א, etc.)
+4. **Photos**: Up to 5 photos per property
+5. **History**: All conversations are saved for tracking
 
-Pull requests מתקבלים בברכה!
+## Support
 
-## 💡 טיפים
-
-1. **קיצורים נתמכים**: חד׳, מ״ר, ת״א, ירוש׳, ק״ג, ש״ח, מיל׳
-2. **פורמטים גמישים**: הבוט מבין "2 מיליון", "2,000,000", "2000000"
-3. **אזורים**: הבוט מזהה אזורים (גוש דן, צפון ת״א, וכו')
-4. **תמונות**: עד 5 תמונות לנכס
-5. **היסטוריה**: כל שיחה נשמרת למעקב
-
-## 📞 תמיכה
-
-יש בעיה? פתח issue ב-GitHub או שלח הודעה.
+Having issues? Open a GitHub issue or send a message.
 
 ---
 
-**Built with ❤️ using CrewAI, Twilio, and GPT-4o**
+**Built with CrewAI, Twilio, and GPT-4o**
