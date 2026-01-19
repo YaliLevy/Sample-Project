@@ -2,7 +2,15 @@
 Media handling tools for Twilio WhatsApp photos.
 Downloads media from Twilio with authentication and stores in Supabase Storage.
 """
-from crewai.tools import BaseTool
+# Try new import first, fallback to old
+try:
+    from langchain_core.tools import BaseTool
+except ImportError:
+    try:
+        from crewai.tools import BaseTool
+    except ImportError:
+        from crewai.tool import BaseTool
+
 from pydantic import BaseModel
 from typing import Type, Optional
 import logging

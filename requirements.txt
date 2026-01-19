@@ -1,7 +1,8 @@
 # CrewAI and AI dependencies
-crewai
+crewai>=0.28.0
 openai>=1.12.0
 langchain-openai
+langchain-core>=0.3.0
 
 # Web framework and API
 flask==3.0.0
