@@ -21,6 +21,11 @@ OPENAI_MODEL = 'gpt-4o'  # Using GPT-4o for best Hebrew support
 # Database Configuration
 DATABASE_URL = os.getenv('DATABASE_URL', 'sqlite:///storage/database.db')
 
+# Supabase Configuration
+SUPABASE_URL = os.getenv('SUPABASE_URL')
+SUPABASE_KEY = os.getenv('SUPABASE_KEY')
+SUPABASE_STORAGE_BUCKET = os.getenv('SUPABASE_STORAGE_BUCKET', 'property-photos')
+
 # Flask Configuration
 FLASK_ENV = os.getenv('FLASK_ENV', 'development')
 FLASK_SECRET_KEY = os.getenv('FLASK_SECRET_KEY', 'dev-secret-key-change-in-production')
@@ -52,6 +57,10 @@ def validate_config():
         missing.append('TWILIO_AUTH_TOKEN')
     if not OPENAI_API_KEY:
         missing.append('OPENAI_API_KEY')
+
+    # Supabase is optional - warn if missing but don't fail
+    if not SUPABASE_URL or not SUPABASE_KEY:
+        print("Warning: Supabase credentials not set. Photos will be stored locally.")
 
     if missing:
         raise ValueError(

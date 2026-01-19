@@ -1,6 +1,6 @@
 """
 Media handling tools for Twilio WhatsApp photos.
-Downloads media from Twilio with authentication and stores locally.
+Downloads media from Twilio with authentication and stores in Supabase Storage.
 """
 from crewai.tools import BaseTool
 from pydantic import BaseModel
@@ -11,6 +11,7 @@ from requests.auth import HTTPBasicAuth
 import os
 from uuid import uuid4
 from datetime import datetime
+from supabase import create_client, Client
 
 from database.models import Photo
 from database.connection import get_session
@@ -19,11 +20,14 @@ from config import settings
 
 logger = logging.getLogger(__name__)
 
+# Initialize Supabase client
+supabase: Client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
+
 
 class TwilioMediaDownloader(BaseTool):
-    """Tool for downloading media from Twilio WhatsApp."""
+    """Tool for downloading media from Twilio WhatsApp and uploading to Supabase."""
     name: str = "הורדת תמונות מ-WhatsApp"
-    description: str = "מוריד תמונות שנשלחו ב-WhatsApp דרך Twilio ושומר אותן מקומית."
+    description: str = "מוריד תמונות שנשלחו ב-WhatsApp דרך Twilio ומעלה אותן ל-Supabase Storage."
     args_schema: Type[BaseModel] = MediaDownloadInput
 
     def _run(
@@ -34,7 +38,7 @@ class TwilioMediaDownloader(BaseTool):
         content_type: Optional[str] = "image/jpeg"
     ) -> str:
         """
-        Download media from Twilio and save locally.
+        Download media from Twilio and upload to Supabase Storage.
 
         Args:
             media_url: Twilio media URL
@@ -43,7 +47,7 @@ class TwilioMediaDownloader(BaseTool):
             content_type: Media content type
 
         Returns:
-            Hebrew confirmation message with file path
+            Hebrew confirmation message with file URL
         """
         try:
             # Authenticate with Twilio
@@ -52,7 +56,7 @@ class TwilioMediaDownloader(BaseTool):
                 settings.TWILIO_AUTH_TOKEN
             )
 
-            # Download media
+            # Download media from Twilio
             logger.info(f"Downloading media from: {media_url}")
             response = requests.get(media_url, auth=auth, timeout=30)
             response.raise_for_status()
@@ -60,44 +64,53 @@ class TwilioMediaDownloader(BaseTool):
             # Determine file extension
             extension = self._get_extension(content_type, media_url)
 
-            # Create user-specific directory
-            user_dir = settings.PHOTOS_PATH / f"user_{user_phone.replace('+', '').replace('whatsapp:', '')}"
-            user_dir.mkdir(exist_ok=True)
-
-            # Generate unique filename
+            # Generate unique filename with user organization
             file_id = str(uuid4())
             timestamp = int(datetime.now().timestamp())
-            filename = f"{file_id}_{timestamp}{extension}"
-            file_path = user_dir / filename
+            user_clean = user_phone.replace('+', '').replace('whatsapp:', '').replace(':', '')
 
-            # Save file
-            with open(file_path, 'wb') as f:
-                f.write(response.content)
+            # Supabase storage path: user_[phone]/property_[id]/[uuid]_[timestamp].jpg
+            if property_id:
+                storage_path = f"user_{user_clean}/property_{property_id}/{file_id}_{timestamp}{extension}"
+            else:
+                storage_path = f"user_{user_clean}/temp/{file_id}_{timestamp}{extension}"
 
-            logger.info(f"Saved media to: {file_path}")
+            # Upload to Supabase Storage
+            logger.info(f"Uploading to Supabase Storage: {storage_path}")
+
+            upload_response = supabase.storage.from_(settings.SUPABASE_STORAGE_BUCKET).upload(
+                path=storage_path,
+                file=response.content,
+                file_options={"content-type": content_type}
+            )
+
+            # Get public URL
+            public_url = supabase.storage.from_(settings.SUPABASE_STORAGE_BUCKET).get_public_url(storage_path)
+
+            logger.info(f"Photo uploaded successfully: {public_url}")
 
             # Save to database if property_id provided
             if property_id:
                 with get_session() as session:
                     photo = Photo(
                         property_id=property_id,
-                        file_path=str(file_path),
+                        file_path=public_url,  # Store Supabase URL
                         twilio_media_url=media_url,
                         media_content_type=content_type
                     )
                     session.add(photo)
                     logger.info(f"Associated photo with property {property_id}")
 
-                return f"התמונה נשמרה ונקשרה לנכס #{property_id}. נתיב: {filename}"
+                return f"התמונה הועלתה ל-Supabase ונקשרה לנכס #{property_id}. ✅"
             else:
-                return f"התמונה נשמרה בהצלחה. נתיב: {filename}"
+                return f"התמונה הועלתה ל-Supabase בהצלחה. ✅"
 
         except requests.exceptions.RequestException as e:
-            logger.error(f"Error downloading media: {e}", exc_info=True)
-            return f"שגיאה בהורדת התמונה: {str(e)}"
+            logger.error(f"Error downloading media from Twilio: {e}", exc_info=True)
+            return f"שגיאה בהורדת התמונה מ-Twilio: {str(e)}"
         except Exception as e:
-            logger.error(f"Error saving media: {e}", exc_info=True)
-            return f"שגיאה בשמירת התמונה: {str(e)}"
+            logger.error(f"Error uploading to Supabase: {e}", exc_info=True)
+            return f"שגיאה בהעלאת התמונה ל-Supabase: {str(e)}"
 
     def _get_extension(self, content_type: str, url: str) -> str:
         """Determine file extension from content type or URL."""
@@ -145,11 +158,10 @@ class GetPropertyPhotosTool(BaseTool):
                 if not photos:
                     return f"לא נמצאו תמונות לנכס #{property_id}."
 
-                # Format results
+                # Format results - showing Supabase URLs
                 result_lines = [f"נמצאו {len(photos)} תמונות לנכס #{property_id}:\n"]
                 for i, photo in enumerate(photos, 1):
-                    filename = os.path.basename(photo.file_path)
-                    result_lines.append(f"{i}. {filename}")
+                    result_lines.append(f"{i}. {photo.file_path}")
 
                 return "\n".join(result_lines)
 
